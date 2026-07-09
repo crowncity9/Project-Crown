@@ -1,12 +1,120 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Crown</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Project Crown</title>
+<style>
+body{margin:0;overflow:hidden;background:#111;color:white;font-family:Arial}
+canvas{width:100vw;height:100vh;display:block;background:#244d2d}
+#menu{position:fixed;inset:0;background:linear-gradient(135deg,#050505,#241b05);display:flex;align-items:center;justify-content:center;text-align:center;z-index:5}
+.card{border:1px solid #ffd95a;border-radius:20px;padding:25px;background:#000c}
+h1{color:#ffd95a}
+button{background:#ffd95a;border:0;border-radius:12px;padding:14px 22px;font-weight:bold;font-size:18px}
+#hud{position:fixed;top:10px;left:10px;text-shadow:0 2px 5px black}
+#talk{position:fixed;left:10px;right:10px;bottom:165px;background:#000c;border-radius:14px;padding:12px;display:none}
+#joy{position:fixed;bottom:18px;left:18px;width:140px;height:140px;border-radius:50%;background:#ffffff22;border:2px solid #ffffff44}
+#stick{position:absolute;left:45px;top:45px;width:50px;height:50px;border-radius:50%;background:#ffffffaa}
+#actions{position:fixed;right:12px;bottom:25px;display:flex;flex-direction:column;gap:10px}
+</style>
 </head>
 <body>
-  <h1>👑 Project Crown</h1>
-  <p>Build 0.3.1 has begun.</p>
+<canvas id="game"></canvas>
+
+<div id="menu">
+<div class="card">
+<h2>RRF STUDIOS</h2>
+<h1>👑 PROJECT CROWN</h1>
+<p>Three Different Paths: King of the Crown</p>
+<button onclick="start()">New Game</button>
+</div>
+</div>
+
+<div id="hud">
+<h1>👑 PROJECT CROWN</h1>
+<div id="mission">Mission: Welcome Home — Leave your apartment.</div>
+</div>
+
+<div id="talk"></div>
+<div id="joy"><div id="stick"></div></div>
+<div id="actions">
+<button onclick="interact()">Interact</button>
+<button onclick="phone()">Phone</button>
+</div>
+
+<script>
+const c=document.getElementById("game"),x=c.getContext("2d");
+let W,H;function size(){W=innerWidth;H=innerHeight;c.width=W;c.height=H}onresize=size;size();
+
+let p={x:390,y:310,r:14,money:25,respect:0},joy={x:0,y:0},started=false,mode="apt",step=0;
+
+const rooms=[
+["Bedroom",120,120,210,160,"#5c4444"],
+["Living Room",350,120,300,260,"#4a3939"],
+["Kitchen",120,310,210,150,"#3e3434"],
+["Front Door",625,245,35,90,"#ffd95a"]
+];
+
+const places=[
+["Corner Store",760,180,210,120,"#caa343"],
+["Highland Cuts",1030,180,210,120,"#3d9bc4"],
+["Basketball Court",820,480,320,190,"#2f7d3b"]
+];
+
+const npcs=[
+{name:"Ms. Pearl",x:720,y:410,text:"Morning, baby. Good to see you back around."},
+{name:"Marcus",x:840,y:330,text:"Welcome to the Corner Store. First breakfast is on the house."},
+{name:"Dre",x:1100,y:330,text:"You need a cut soon. Highland Heights been asking about you."}
+];
+
+function start(){document.getElementById("menu").style.display="none";started=true;say("Mission","Welcome Home begins. Walk to the front door.")}
+function say(n,t){let d=document.getElementById("talk");d.innerHTML="<b style='color:#ffd95a'>"+n+"</b><br>"+t;d.style.display="block";setTimeout(()=>d.style.display="none",4000)}
+function mission(t){document.getElementById("mission").textContent="Mission: Welcome Home — "+t}
+function near(o){return p.x>o[1]-25&&p.x<o[1]+o[3]+25&&p.y>o[2]-25&&p.y<o[2]+o[4]+25}
+
+function interact(){
+ if(!started)return;
+ if(mode==="apt"){
+  if(near(rooms[3])){mode="out";p.x=700;p.y=470;step=1;mission("Talk to Ms. Pearl.");say("Project Crown","You step outside. Highland Heights is awake.");return}
+  say("Apartment","Walk to the front door to leave.");return
+ }
+ for(const n of npcs){
+  if(Math.hypot(p.x-n.x,p.y-n.y)<55){
+   say(n.name,n.text);
+   if(n.name==="Ms. Pearl"&&step===1){step=2;p.respect+=2;mission("Visit the Corner Store.")}
+   else if(n.name==="Marcus"&&step===2){step=3;p.money-=2;p.respect+=1;mission("Visit Highland Cuts.")}
+   else if(n.name==="Dre"&&step===3){step=4;p.respect+=2;mission("Mission complete. Free roam unlocked.")}
+   return
+  }
+ }
+ say("Project Crown","Move closer to a person or building.")
+}
+function phone(){say("Phone","Money: $"+p.money+"<br>Respect: "+p.respect+"<br>Mission: Welcome Home")}
+
+let box=document.getElementById("joy"),stick=document.getElementById("stick"),drag=false;
+function move(e){let t=e.touches[0],r=box.getBoundingClientRect(),cx=r.left+70,cy=r.top+70,dx=t.clientX-cx,dy=t.clientY-cy,l=Math.hypot(dx,dy),m=45;if(l>m){dx=dx/l*m;dy=dy/l*m}joy.x=dx/m;joy.y=dy/m;stick.style.left=45+dx+"px";stick.style.top=45+dy+"px"}
+box.ontouchstart=e=>{drag=true;move(e);e.preventDefault()}
+box.ontouchmove=e=>{if(drag)move(e);e.preventDefault()}
+box.ontouchend=()=>{drag=false;joy={x:0,y:0};stick.style.left="45px";stick.style.top="45px"}
+
+function drawRoom(arr){for(const o of arr){x.fillStyle=o[5];x.fillRect(o[1],o[2],o[3],o[4]);x.strokeStyle="white";x.strokeRect(o[1],o[2],o[3],o[4]);x.fillStyle="white";x.font="17px Arial";x.fillText(o[0],o[1]+12,o[2]+28)}}
+function frame(){
+ x.clearRect(0,0,W,H);
+ if(started){
+  p.x+=joy.x*3;p.y+=joy.y*3;
+  if(mode==="apt"){x.fillStyle="#2b2424";x.fillRect(80,80,620,420);drawRoom(rooms)}
+  else{
+   x.fillStyle="#214d2d";x.fillRect(0,0,W,H);
+   x.fillStyle="#2b2b2b";x.fillRect(0,390,1500,110);x.fillRect(650,0,110,900);
+   x.fillStyle="#f0cf56";for(let i=0;i<1500;i+=100)x.fillRect(i,443,55,5);
+   drawRoom(places);
+   for(const n of npcs){x.fillStyle="#ffd95a";x.beginPath();x.arc(n.x,n.y,11,0,7);x.fill();x.fillStyle="white";x.fillText(n.name,n.x+15,n.y+5)}
+  }
+  x.fillStyle="white";x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill();x.strokeStyle="black";x.stroke()
+ }
+ requestAnimationFrame(frame)
+}
+frame();
+</script>
 </body>
 </html>
